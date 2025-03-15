@@ -1,4 +1,3 @@
-// Глобальный кэш аватарок пользователей (объявляем глобально)
 window.userAvatars = {};
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -21,12 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const avatarInput = document.getElementById('avatarInput');
     const logoutButton = document.getElementById('logoutButton');
 
-    const callButton = document.getElementById('callButton'); // Получаем кнопку звонка
+    const callButton = document.getElementById('callButton'); 
     
-    let callInProgress = false; // Флаг, чтобы предотвратить несколько звонков одновременно
+    let callInProgress = false;
 
 
-    // Проверяем наличие элементов для предпросмотра файлов
+  
     const filePreview = document.getElementById('filePreview');
     const fileName = filePreview ? document.getElementById('fileName') : null;
     const removeFile = filePreview ? document.getElementById('removeFile') : null;
@@ -35,11 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let socket;
     let selectedFile = null;
 
-    // Функция для получения иконки по типу файла
+    
     const getFileIcon = (fileUrl, fileType) => {
         const extension = fileUrl.split('.').pop().toLowerCase();
         if (fileType.startsWith('image/')) {
-            return ''; // Для изображений иконка не нужна, показываем само изображение
+            return ''; 
         }
         switch (extension) {
             case 'pdf':
@@ -56,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // Получение аватарки пользователя (с кэшированием)
+    
     async function getUserAvatar(username) {
         if (window.userAvatars[username]) {
             return window.userAvatars[username];
@@ -75,39 +74,38 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Ошибка при получении аватарки:', error);
         }
 
-        // Если аватарка не найдена, устанавливаем значение по умолчанию
+        
         window.userAvatars[username] = '/uploads/default-avatar.png';
         return '/uploads/default-avatar.png';
     }
 
-    // Отображение сообщений с улучшенным форматированием
+    
     async function displayMessage(msg) {
-        if (!window.socket || !window.socket.user) return; // Если соединение ещё не установлено, пропускаем
+        if (!window.socket || !window.socket.user) return; 
 
         const messageElement = document.createElement('div');
         const isSentByMe = msg.username === window.socket.user.username;
         messageElement.classList.add('message', isSentByMe ? 'sent' : 'received');
 
-        // Сохраняем ID сообщения для возможности редактирования/удаления
+        
         if (msg._id) {
             messageElement.setAttribute('data-message-id', msg._id);
         }
 
-        // Получаем аватарку из сообщения или запрашиваем её, если не указана
+        
         const avatarUrl = msg.avatar || await getUserAvatar(msg.username);
 
-        // Форматирование даты
+        
         const messageDate = new Date(msg.timestamp || Date.now());
         const timeString = messageDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-        // Форматирование имени файла для отображения
+        
         const getFormattedFilename = (url) => {
             const filename = url.split('/').pop();
-            // Ограничиваем длину имени файла
+           
             return filename.length > 20 ? filename.substring(0, 17) + '...' + filename.substring(filename.lastIndexOf('.')) : filename;
         };
 
-        // Создаем кнопки редактирования/удаления только для своих сообщений
         const actionButtons = isSentByMe ? `
             <div class="message-actions">
                 <button class="edit-message-btn" title="Редактировать">
@@ -123,7 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         ` : '';
 
-        // Отметка о редактировании
         const editedMark = msg.edited ? '<span class="message-edited">(ред.)</span>' : '';
 
         let content = `
@@ -153,7 +150,6 @@ document.addEventListener('DOMContentLoaded', () => {
         messageElement.innerHTML = content;
         messagesDiv.appendChild(messageElement);
 
-        // Добавляем обработчики событий для кнопок редактирования и удаления
         if (isSentByMe) {
             const editBtn = messageElement.querySelector('.edit-message-btn');
             const deleteBtn = messageElement.querySelector('.delete-message-btn');
@@ -167,7 +163,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // При загрузке одиночных сообщений будем использовать плавный скролл
         if (messagesDiv.classList.contains('loaded')) {
             setTimeout(() => {
                 messagesDiv.scrollTo({
@@ -178,16 +173,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Обработчик редактирования сообщения
     function handleEditMessage(messageElement, msg) {
-        // Находим текст сообщения
         const textElement = messageElement.querySelector('.message-text');
         if (!textElement) return;
 
-        // Получаем текущий текст без отметки о редактировании
         const currentText = textElement.textContent.replace('(ред.)', '').trim();
 
-        // Создаем поле для редактирования
         const editContainer = document.createElement('div');
         editContainer.className = 'edit-message-container';
         editContainer.innerHTML = `
@@ -198,43 +189,34 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        // Заменяем текст на форму редактирования
         textElement.style.display = 'none';
         textElement.parentNode.insertBefore(editContainer, textElement);
 
-        // Фокус на текстовом поле
         const textarea = editContainer.querySelector('.edit-textarea');
         textarea.focus();
 
-        // Обработчик для сохранения изменений
         editContainer.querySelector('.save-edit-btn').addEventListener('click', () => {
             const newText = textarea.value.trim();
             if (newText && newText !== currentText) {
-                // Отправляем новый текст на сервер
                 window.socket.emit('edit message', {
                     id: messageElement.getAttribute('data-message-id'),
                     text: newText
                 });
 
-                // Обновляем текст локально (сервер подтвердит изменение)
                 textElement.innerHTML = `${newText} <span class="message-edited">(ред.)</span>`;
             }
 
-            // Возвращаем отображение текста
             textElement.style.display = 'block';
             editContainer.remove();
         });
 
-        // Обработчик для отмены редактирования
         editContainer.querySelector('.cancel-edit-btn').addEventListener('click', () => {
             textElement.style.display = 'block';
             editContainer.remove();
         });
     }
 
-    // Обработчик удаления сообщения
     function handleDeleteMessage(messageElement, msg) {
-        // Запрашиваем подтверждение
         if (confirm('Удалить это сообщение?')) {
             const messageId = messageElement.getAttribute('data-message-id');
 
@@ -243,17 +225,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Отправляем запрос на удаление
             window.socket.emit('delete message', { id: messageId });
 
-            // Визуально показываем, что идет процесс удаления
             messageElement.classList.add('deleting');
 
             console.log(`Отправлен запрос на удаление сообщения с ID: ${messageId}`);
         }
     }
 
-    // Регистрация
     registerButton.addEventListener('click', async () => {
         const username = usernameInput.value;
         const password = passwordInput.value;
@@ -269,7 +248,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Вход
     loginButton.addEventListener('click', async () => {
         const username = usernameInput.value;
         const password = passwordInput.value;
@@ -303,7 +281,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Выход
     logoutButton.addEventListener('click', () => {
         localStorage.removeItem('token');
         authDiv.classList.remove('hidden');
@@ -311,7 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.socket.disconnect();
     });
 
-    // Подключение к Socket.IO
     const connectSocket = () => {
         if (!token) return;
 
@@ -321,7 +297,6 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 window.socket.user = { username: jwt_decode(token).username };
                 console.log('Подключение к сокету установлено');
-                // После успешного подключения загружаем сообщения
                 loadMessages();
             } catch (err) {
                 console.error('Ошибка при декодировании токена:', err);
@@ -338,11 +313,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.socket.on('chat message', displayMessage);
 
-        // Обработка удаления сообщений
         window.socket.on('message deleted', (data) => {
             const messageElement = document.querySelector(`[data-message-id="${data.id}"]`);
             if (messageElement) {
-                // Анимация удаления
                 messageElement.classList.add('deleting');
                 setTimeout(() => {
                     messageElement.remove();
@@ -350,7 +323,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Обработка редактирования сообщений
         window.socket.on('message edited', (data) => {
             const messageElement = document.querySelector(`[data-message-id="${data.id}"]`);
             if (messageElement) {
@@ -361,34 +333,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Обработка ошибок
         window.socket.on('error', (error) => {
             console.error('Ошибка:', error.message);
             alert(error.message);
         });
 
-        // Обработка событий обновления профиля пользователя
         window.socket.on('user profile updated', (data) => {
             console.log('Пользователь обновил профиль:', data);
 
-            // Обновляем кэш аватарок
             if (data.newUsername && data.avatar) {
                 userAvatars[data.newUsername] = data.avatar;
 
-                // Удаляем старую запись из кэша если имя пользователя изменилось
                 if (data.oldUsername && data.oldUsername !== data.newUsername) {
                     delete userAvatars[data.oldUsername];
                 }
             }
 
-            // Обновляем имя отправителя и аватарки во всех сообщениях в DOM
             const messages = document.querySelectorAll('.message');
             messages.forEach(message => {
                 const usernameEl = message.querySelector('.font-semibold');
                 if (usernameEl && usernameEl.textContent === data.oldUsername) {
                     usernameEl.textContent = data.newUsername;
 
-                    // Обновляем класс сообщения, если это наши сообщения
                     if (window.socket.user.username === data.newUsername) {
                         message.classList.add('sent');
                         message.classList.remove('received');
@@ -397,7 +363,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         message.classList.remove('sent');
                     }
 
-                    // Обновляем аватарку во всех сообщениях этого пользователя
                     const avatarImgs = message.querySelectorAll('.avatar');
                     avatarImgs.forEach(img => {
                         img.src = data.avatar || '/uploads/default-avatar.png';
@@ -407,19 +372,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Обработка событий подключения/отключения пользователей
         window.socket.on('user connected', (data) => {
             console.log(`Пользователь ${data.username} подключился`);
-            // Здесь можно добавить уведомление о подключении
         });
 
         window.socket.on('user disconnected', (data) => {
             console.log(`Пользователь ${data.username} отключился`);
-            // Здесь можно добавить уведомление об отключении
         });
     };
 
-    // Обработка истечения срока сессии
     const handleSessionExpired = () => {
         localStorage.removeItem('token');
         token = null;
@@ -428,10 +389,8 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Сессия истекла. Пожалуйста, войдите снова.');
     };
 
-    // Загрузка сообщений
     const loadMessages = async () => {
         try {
-            // Показываем индикатор загрузки
             const loadingSpinner = document.getElementById('loadingSpinner');
             if (loadingSpinner) loadingSpinner.style.display = 'flex';
 
@@ -449,36 +408,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const messages = await response.json();
 
-            // Временно отключаем анимацию для быстрой загрузки
             document.documentElement.style.setProperty('--message-animation', 'none');
 
-            // Добавляем все сообщения сразу
             for (const msg of messages) {
                 await displayMessage(msg);
             }
 
-            // Моментальный скролл к последнему сообщению
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-            // Скрываем индикатор загрузки после загрузки всех сообщений
             if (loadingSpinner) loadingSpinner.style.display = 'none';
 
-            // Возвращаем анимацию через небольшую задержку
             setTimeout(() => {
                 document.documentElement.style.setProperty('--message-animation', 'slideIn 0.3s ease-out');
-                // Помечаем, что сообщения загружены
                 messagesDiv.classList.add('loaded');
             }, 100);
         } catch (error) {
             console.error('Ошибка при загрузке сообщений:', error);
 
-            // Скрываем индикатор загрузки в случае ошибки
             const loadingSpinner = document.getElementById('loadingSpinner');
             if (loadingSpinner) loadingSpinner.style.display = 'none';
         }
     };
 
-    // Отправка сообщения
     sendButton.addEventListener('click', async () => {
         const text = messageInput.value.trim();
         if (text || selectedFile) {
@@ -533,12 +484,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Выбор файла
     fileButton.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', () => {
         selectedFile = fileInput.files[0];
         if (selectedFile && filePreview && fileName) {
-            // Если имя файла слишком длинное, обрезаем
             const displayName = selectedFile.name.length > 25 
                 ? selectedFile.name.substring(0, 22) + '...' 
                 : selectedFile.name;
@@ -546,14 +495,12 @@ document.addEventListener('DOMContentLoaded', () => {
             filePreview.classList.remove('hidden');
             filePreview.classList.add('flex');
 
-            // Фокус на поле ввода для удобства пользователя
             setTimeout(() => {
                 messageInput.focus();
             }, 100);
         }
     });
 
-    // Функция очистки предпросмотра файла
     const clearFilePreview = () => {
         selectedFile = null;
         fileInput.value = '';
@@ -562,20 +509,17 @@ document.addEventListener('DOMContentLoaded', () => {
             filePreview.classList.remove('flex');
             if (fileName) fileName.textContent = '';
 
-            // Возвращаем фокус на поле ввода
             setTimeout(() => {
                 messageInput.focus();
             }, 100);
         }
     };
 
-    // Удаление файла (проверяем, что элементы существуют)
     if (removeFile) {
         removeFile.addEventListener('click', () => clearFilePreview());
     }
 
     if (messageInput) {
-        // Автоматическое изменение высоты поля ввода при вводе текста
         const autoResize = () => {
             messageInput.style.height = 'auto';
             messageInput.style.height = (messageInput.scrollHeight) + 'px';
@@ -584,12 +528,10 @@ document.addEventListener('DOMContentLoaded', () => {
         messageInput.addEventListener('input', autoResize);
         messageInput.addEventListener('focus', autoResize);
 
-        // Отправка по Enter (без Shift)
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendButton.click();
-                // Сброс высоты поля ввода после отправки
                 setTimeout(() => {
                     messageInput.style.height = '40px';
                 }, 10);
@@ -597,20 +539,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Проверка и автоматический вход при загрузке страницы
     if (token) {
-        // Проверка валидности токена
         fetch('/validate-token', {
             headers: { 'Authorization': token }
         })
         .then(response => {
             if (response.ok) {
-                // Если токен валиден, автоматически входим
                 authDiv.classList.add('hidden');
                 chatDiv.classList.remove('hidden');
                 connectSocket();
             } else {
-                // Если токен невалиден, удаляем его
                 localStorage.removeItem('token');
                 token = null;
             }
@@ -621,7 +559,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Временная заглушка для jwt_decode
 function jwt_decode(token) {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -632,7 +569,6 @@ function jwt_decode(token) {
 }
 
 
-// Инициализируем обработчики модального окна профиля после полной загрузки DOM
 document.addEventListener('DOMContentLoaded', () => {
     const profileModal = document.getElementById('profileModal');
     const profileButton = document.getElementById('profileButton');
@@ -642,18 +578,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const avatarInput = document.getElementById('avatarInput');
     const avatarPreview = document.getElementById('avatarPreview');
 
-    // Открытие модального окна
     if (profileButton && profileModal) {
         profileButton.addEventListener('click', async () => {
             try {
-                // Получаем актуальный токен из localStorage
                 const token = localStorage.getItem('token');
                 if (!token) {
                     alert('Вы не авторизованы');
                     return;
                 }
 
-                // Проверяем, что сокет инициализирован и имеет данные пользователя
                 if (window.socket && window.socket.user && window.socket.user.username) {
                     const response = await fetch(`/user/${window.socket.user.username}`, {
                         headers: { 'Authorization': token }
@@ -662,12 +595,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (response.ok) {
                         const userData = await response.json();
 
-                        // Заполняем поле никнейма
                         if (newUsernameInput) {
                             newUsernameInput.value = userData.username || '';
                         }
 
-                        // Устанавливаем текущую аватарку
                         if (avatarPreview) {
                             avatarPreview.src = userData.avatar || '/uploads/default-avatar.png';
                         }
@@ -681,7 +612,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Закрытие модального окна
     if (closeProfileModalButtons) {
         closeProfileModalButtons.forEach(button => {
             button.addEventListener('click', () => {
@@ -690,16 +620,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Предпросмотр аватарки с компрессией
     if (avatarInput && avatarPreview) {
         avatarInput.addEventListener('change', () => {
             const file = avatarInput.files[0];
             if (file && file.type.startsWith('image/')) {
-                // Используем компрессор для уменьшения размера аватарки
                 new Compressor(file, {
-                    quality: 0.8, // Качество изображения (0-1)
-                    maxWidth: 200, // Максимальная ширина
-                    maxHeight: 200, // Максимальная высота
+                    quality: 0.8,
+                    maxWidth: 200,
+                    maxHeight: 200,
                     success(result) {
                         const reader = new FileReader();
                         reader.onload = (e) => {
@@ -709,7 +637,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     },
                     error(err) {
                         console.error('Ошибка при сжатии аватарки:', err);
-                        // Если ошибка сжатия, просто показываем без сжатия
                         const reader = new FileReader();
                         reader.onload = (e) => {
                             avatarPreview.src = e.target.result;
@@ -721,10 +648,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Сохранение профиля
     if (saveProfileButton) {
         saveProfileButton.addEventListener('click', async () => {
-            // Получаем актуальный токен из localStorage
             const token = localStorage.getItem('token');
 
             if (!token) {
@@ -756,27 +681,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok) {
                     const data = await response.json();
 
-                    // Обновляем токен и информацию о пользователе
                     if (data.token) {
                         localStorage.setItem('token', data.token);
                     }
 
-                    // Обновляем кэш аватарок если он существует в глобальной области
                     if (data.user && window.userAvatars) {
-                        // Сохраняем новую аватарку в кэше
                         window.userAvatars[data.user.username] = data.user.avatar;
 
-                        // Если был изменен username, удаляем старую запись из кэша
                         if (oldUsername && oldUsername !== data.user.username) {
                             delete window.userAvatars[oldUsername];
                         }
                     }
 
-                    // Обновляем данные в сокете
                     if (window.socket && window.socket.user) {
                         window.socket.user.username = data.user.username;
 
-                        // Оповещаем сервер об обновлении профиля
                         window.socket.emit('profile updated', {
                             oldUsername: oldUsername,
                             newUsername: data.user.username
